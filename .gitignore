@@ -1,0 +1,22 @@
+# Python-related
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.env
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Ignore node_modules for frontend (future setup)
+node_modules/

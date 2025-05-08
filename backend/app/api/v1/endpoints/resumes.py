@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Request
 from typing import List
 from bson import ObjectId
 import requests
@@ -8,6 +8,9 @@ from ....schemas.resume import ResumeUploadResponse
 from ....schemas.user import User
 from ....db.mongodb import mongodb
 from ..deps import get_current_active_user
+from typing import Optional
+import json
+from io import BytesIO
 
 router = APIRouter()
 
@@ -16,65 +19,70 @@ PARSER_SERVICE_URL = os.getenv("PARSER_SERVICE_URL", "http://localhost:8001")
 
 @router.post("/upload", response_model=ResumeUploadResponse)
 async def upload_resume(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user)
 ):
     """
     Upload and parse a resume document.
-    
-    The file will be sent to the resume parser service for processing
-    and the results will be stored in the database.
     """
     try:
+        # Get form data
+        form_data = await request.form()
+        job_id = form_data.get("job_id")
+        
+        if not job_id:
+            return ResumeUploadResponse(
+                success=False,
+                message="Job ID is required."
+            )
+
         # Validate file extension
-        file_extension = Path(file.filename).suffix
-        if file_extension.lower() not in ['.pdf', '.docx', '.doc', '.txt']:
+        file_extension = Path(file.filename).suffix.lower()
+        if file_extension not in ['.pdf', '.docx', '.doc', '.txt']:
             return ResumeUploadResponse(
                 success=False,
                 message=f"Unsupported file format: {file_extension}"
             )
         
-        # Read file content
+        # Read file content once
         file_content = await file.read()
         
-        # Create a new multipart request to the parser service
-        files = {"file": (file.filename, file_content, file.content_type)}
-        params = {"user_id": current_user.username}
+        # Prepare the request to parser service
+        files = {'file': (file.filename, BytesIO(file_content))}
+        data = {
+            'job_id': job_id,
+            'username': current_user.username
+        }
         
-        # Send the file to the parser service
+        # Send to parser service
         response = requests.post(
             f"{PARSER_SERVICE_URL}/parse",
             files=files,
-            params=params
+            data=data
         )
         
-        # Check the response
         if response.status_code == 200:
-            parser_response = response.json()
-            print(parser_response)
-            if parser_response.get("success"):
-                return ResumeUploadResponse(
-                    success=True,
-                    message="Resume uploaded and parsed successfully",
-                    resume_id=parser_response.get("data", {}).get("id")
-                )
-        
-        # Handle error from parser service
-        return ResumeUploadResponse(
-            success=False,
-            message=f"Resume parsing failed: {response.json().get('message', 'Unknown error')}"
-        )
-        
+            return ResumeUploadResponse(
+                success=True,
+                message="Resume uploaded successfully",
+                resume_id=response.json().get("resume_id")
+            )
+        else:
+            return ResumeUploadResponse(
+                success=False,
+                message=f"Parser error: {response.text}"
+            )
+            
     except Exception as e:
         return ResumeUploadResponse(
             success=False,
-            message=f"Error uploading resume: {str(e)}"
+            message=f"Upload failed: {str(e)}"
         )
-
+    
 @router.get("/", response_model=List[dict])
 async def get_user_resumes(current_user: User = Depends(get_current_active_user)):
     """Get all resumes uploaded by the current user."""
-    print(current_user)
     resumes = await mongodb.get_collection("parsed_resumes").find({"user_id": current_user.username}).to_list(length=None)
     
     # Convert ObjectIds to strings

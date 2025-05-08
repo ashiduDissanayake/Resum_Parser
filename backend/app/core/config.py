@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Settings(BaseSettings):
     # API Settings
@@ -14,7 +17,7 @@ class Settings(BaseSettings):
     
     # Database
     MONGO_URI: str = os.getenv("MONGO_URI", "mongodb+srv://ashidudissanayake1:chP0CyGcYR89zDeg@cluster0.4dg71cd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-    DATABASE_NAME: str = "resume_rover_db"
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "resume_rover_db")
     
     # CORS
     BACKEND_CORS_ORIGINS: list = ["*"]

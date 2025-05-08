@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 import PyPDF2
 import io
 import os
@@ -10,6 +10,9 @@ from enum import Enum
 from pydantic import BaseModel
 import certifi
 import dns.resolver
+from datetime import datetime
+from pathlib import Path
+from main import ImprovedResumeParser
 
 # Load environment variables
 load_dotenv()
@@ -65,23 +68,28 @@ def convert_objectid_to_str(data: Dict[str, Any]) -> Dict[str, Any]:
         return str(data)
     return data
 
+def extract_text_from_word(file_content: bytes) -> str:
+    try:
+        from docx import Document
+        document = Document(io.BytesIO(file_content))
+        text = []
+        for para in document.paragraphs:
+            text.append(para.text)
+        return "\n".join(text)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing Word file: {str(e)}")
+
+
 @app.post("/parse")
 async def parse_resume_endpoint(
-    request: Request,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    job_id: str = Form(...),  # Define as Form parameter
+    username: str = Form(...)  # Define as Form parameter
 ):
     try:
-        # Get form data
-        form_data = await request.form()
-        job_id = form_data.get("job_id")
-        username = form_data.get("username")
+        # No need to extract from form_data anymore
+        # since they're directly available as parameters
         
-        if not job_id or not username:
-            raise HTTPException(
-                status_code=400,
-                detail="Missing required fields"
-            )
-
         # Create all necessary data internally
         resume_data = {
             "job_id": job_id,
@@ -91,17 +99,36 @@ async def parse_resume_endpoint(
             "ranking_score": None
         }
 
+        # Validate file extension
+        file_extension = Path(file.filename).suffix.lower()
+        if not file_extension:
+            raise HTTPException(status_code=400, detail="File has no extension")
+            
         # Process file
         contents = await file.read()
         if not contents:
             raise HTTPException(status_code=400, detail="File is empty")
         
-        text = extract_text_from_pdf(contents)  # Implement other file types
+        # Extract text based on file type
+        if file_extension == '.pdf':
+            text = extract_text_from_pdf(contents)
+        elif file_extension in ['.docx', '.doc']:
+            text = extract_text_from_word(contents)
+        elif file_extension == '.txt':
+            text = contents.decode('utf-8')
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file format: {file_extension}"
+            )
+        
+        parser = ImprovedResumeParser()
+        parsed_data = parser.parse_resume(text)
         
         # Create complete record
         resume_record = {
             **resume_data,
-            "parsed_data": {"extracted_text": text},
+            **parsed_data,
             "original_filename": file.filename,
             "upload_date": datetime.now()
         }
@@ -118,6 +145,7 @@ async def parse_resume_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Processing failed: {str(e)}"

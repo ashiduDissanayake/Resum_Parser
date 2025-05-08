@@ -11,8 +11,8 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 logger = logging.getLogger(__name__)
 
 # Configure DNS resolver for MongoDB Atlas
-dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
-dns.resolver.default_resolver.nameservers = ['8.8.8.8']  # Use Google's DNS
+# dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+# dns.resolver.default_resolver.nameservers = ['8.8.8.8']  # Use Google's DNS
 
 class MongoDB:
     client: AsyncIOMotorClient = None
@@ -41,7 +41,7 @@ class MongoDB:
             logger.info("MongoDB connection closed")
 
     def get_collection(self, collection_name: str):
-        if not self.db:
+        if self.db is None:
             raise ConnectionError("MongoDB connection not established")
         return self.db[collection_name]
 

@@ -12,7 +12,9 @@ import certifi
 import dns.resolver
 from datetime import datetime
 from pathlib import Path
-from main import ImprovedResumeParser
+
+# Import HybridCVParser instead of ImprovedResumeParser
+from hybrid_cv_parser import HybridCVParser
 
 # Load environment variables
 load_dotenv()
@@ -83,13 +85,10 @@ def extract_text_from_word(file_content: bytes) -> str:
 @app.post("/parse")
 async def parse_resume_endpoint(
     file: UploadFile = File(...),
-    job_id: str = Form(...),  # Define as Form parameter
-    username: str = Form(...)  # Define as Form parameter
+    job_id: str = Form(...),
+    username: str = Form(...)
 ):
     try:
-        # No need to extract from form_data anymore
-        # since they're directly available as parameters
-        
         # Create all necessary data internally
         resume_data = {
             "job_id": job_id,
@@ -122,8 +121,14 @@ async def parse_resume_endpoint(
                 detail=f"Unsupported file format: {file_extension}"
             )
         
-        parser = ImprovedResumeParser()
-        parsed_data = parser.parse_resume(text)
+        # Get API key from environment
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="GOOGLE_API_KEY environment variable is not set")
+        
+        # Use HybridCVParser instead of ImprovedResumeParser
+        parser = HybridCVParser(api_key=api_key)
+        parsed_data = parser.parse(text)  # Note: The method is parse() not parse_resume()
         
         # Create complete record
         resume_record = {

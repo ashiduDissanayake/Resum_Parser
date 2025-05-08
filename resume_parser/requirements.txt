@@ -1,15 +1,19 @@
-google-cloud-language==2.11.1
-google-cloud-storage==2.13.0
-pymongo==4.6.1
-python-dotenv==1.0.0
-PyPDF2==3.0.1
-fastapi==0.109.2
-uvicorn==0.27.1
-python-multipart==0.0.6
-pydantic==2.6.1
-pydantic-core==2.16.2
-spacy==3.7.2
-python-dateutil==2.8.2
-certifi==2024.2.2
-dnspython==2.7.0
-en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl 
+# Resume Parser Requirements
+# Last updated: 2025-05-08 14:07:47 (UTC)
+# Author: ashiduDissanayake
+
+# Core dependencies
+spacy>=3.5.0
+google-generativeai>=0.3.1
+transformers>=4.27.0
+torch>=1.13.0
+python-dotenv>=1.0.0
+
+# spaCy models - download with:
+# python -m spacy download en_core_web_sm
+# python -m spacy download en_core_web_md
+# python -m spacy download en_core_web_sm
+
+# Utilities
+numpy>=1.21.0
+typing-extensions>=4.0.0

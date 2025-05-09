@@ -80,17 +80,6 @@ async def upload_resume(
             success=False,
             message=f"Upload failed: {str(e)}"
         )
-    
-@router.get("/", response_model=List[dict])
-async def get_user_resumes(current_user: User = Depends(get_current_active_user)):
-    """Get all resumes uploaded by the current user."""
-    resumes = await mongodb.get_collection("parsed_resumes").find({"username": current_user.username}).to_list(length=None)
-    
-    # Convert ObjectIds to strings
-    for resume in resumes:
-        resume["id"] = str(resume.pop("_id"))
-    
-    return resumes
 
 @router.get("/{resume_id}", response_model=dict)
 async def get_resume(

@@ -85,14 +85,12 @@ def extract_text_from_word(file_content: bytes) -> str:
 @app.post("/parse")
 async def parse_resume_endpoint(
     file: UploadFile = File(...),
-    job_id: str = Form(...),
-    username: str = Form(...)
+    job_id: str = Form(...)
 ):
     try:
         # Create all necessary data internally
         resume_data = {
             "job_id": job_id,
-            "username": username,
             "is_verified": False,  # Default value
             "status": "saved",     # Default status
             "ranking_score": None
